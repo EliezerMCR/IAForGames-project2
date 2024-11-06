@@ -1,3 +1,5 @@
+# main.py
+
 import pygame
 from astar import AStar
 from character import Character
@@ -6,13 +8,18 @@ from utils import *
 
 def get_neighbors(x, y, grid):
     neighbors = []
-    # Izquierda, derecha, arriba, abajo
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    # Movimientos en 8 direcciones (incluyendo diagonales)
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                  (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
     for dx, dy in directions:
         nx, ny = x + dx, y + dy
         if 0 <= nx < GRID_WIDTH and 0 <= ny < GRID_HEIGHT:
             if grid[ny][nx] == 0:
+                # Prevenir el corte de esquinas
+                if dx != 0 and dy != 0:
+                    if grid[y][nx] != 0 and grid[ny][x] != 0:
+                        continue  # Si ambos adyacentes son obstáculos, no permitir movimiento diagonal
                 neighbors.append((nx, ny))
     return neighbors
 
@@ -48,10 +55,10 @@ def main():
         grid[y][GRID_WIDTH - 1] = 1  # Pared derecha
 
     # Añadir obstáculos internos
-    for y in range(5, 10):
-        grid[y][7] = 1  # Obstáculo vertical
-    for x in range(10, 15):
-        grid[8][x] = 1  # Obstáculo horizontal
+    for y in range(5, 15):
+        grid[y][15] = 1  # Obstáculo vertical
+    for x in range(15, 25):
+        grid[10][x] = 1  # Obstáculo horizontal
 
     show_connections = False  # Variable para controlar la visibilidad de las conexiones
 
@@ -87,6 +94,13 @@ def main():
                     if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
                         if grid[grid_y][grid_x] == 0:
                             characters[0].move_to(grid_x, grid_y)
+
+        # Manejar el botón para mostrar/ocultar conexiones
+        button_rect = draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
+                                  ("ON" if show_connections else "OFF"), show_connections)
+        if button_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            show_connections = not show_connections
+            pygame.time.delay(200)
 
         # Actualizar personajes
         for character in characters:
@@ -130,12 +144,8 @@ def main():
         for character in characters:
             character.draw(screen)
 
-        # Dibujar el botón
-        button_rect = draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
-                                  ("ON" if show_connections else "OFF"), show_connections)
-        if button_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
-            show_connections = not show_connections
-            pygame.time.delay(200)
+        draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
+                    ("ON" if show_connections else "OFF"), show_connections)
 
         pygame.display.flip()
         clock.tick(5)

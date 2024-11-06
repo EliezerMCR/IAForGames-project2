@@ -11,6 +11,7 @@ class AStar:
         self.grid_height = len(grid)
 
     def heuristic(self, start, end):
+        # Heurística de distancia octil para movimiento en 8 direcciones
         dx = abs(start[0] - end[0])
         dy = abs(start[1] - end[1])
         D = 1
@@ -34,7 +35,7 @@ class AStar:
                     # Prevenir el corte de esquinas
                     if dx != 0 and dy != 0:
                         if self.grid[y][nx] != 0 and self.grid[ny][x] != 0:
-                            continue
+                            continue  # Si ambos adyacentes son obstáculos, no permitir movimiento diagonal
                     # Calcular el costo de movimiento
                     if dx == 0 or dy == 0:
                         move_cost = 1  # Movimiento ortogonal
