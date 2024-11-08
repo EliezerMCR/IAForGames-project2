@@ -1,9 +1,23 @@
 # main.py
-
 import pygame
 from astar import AStar
 from character import Character
 from utils import *
+from event_manager import EventManager
+from decision_tree import DecisionNode, ActionNode
+from decisions import *
+
+
+def draw_button(screen, x, y, width, height, text, active):
+    rect = pygame.Rect(x, y, width, height)
+    color = (0, 200, 0) if active else (200, 0, 0)
+    pygame.draw.rect(screen, color, rect)
+    pygame.draw.rect(screen, (0, 0, 0), rect, 2)
+    font = pygame.font.SysFont(None, 24)
+    text_surface = font.render(text, True, (255, 255, 255))
+    text_rect = text_surface.get_rect(center=rect.center)
+    screen.blit(text_surface, text_rect)
+    return rect
 
 
 def get_neighbors(x, y, grid):
@@ -22,18 +36,6 @@ def get_neighbors(x, y, grid):
                         continue  # Si ambos adyacentes son obstáculos, no permitir movimiento diagonal
                 neighbors.append((nx, ny))
     return neighbors
-
-
-def draw_button(screen, x, y, width, height, text, active):
-    rect = pygame.Rect(x, y, width, height)
-    color = (0, 200, 0) if active else (200, 0, 0)
-    pygame.draw.rect(screen, color, rect)
-    pygame.draw.rect(screen, (0, 0, 0), rect, 2)
-    font = pygame.font.SysFont(None, 24)
-    text_surface = font.render(text, True, (255, 255, 255))
-    text_rect = text_surface.get_rect(center=rect.center)
-    screen.blit(text_surface, text_rect)
-    return rect
 
 
 def main():
@@ -65,37 +67,45 @@ def main():
     # Crear una instancia de AStar
     astar = AStar(grid)
 
-    # Crear múltiples personajes
-    characters = [
-        Character(2, 2, grid, astar, ORANGE),
-        Character(5, 12, grid, astar, RED),
-        Character(15, 3, grid, astar, BLUE)
-    ]
+    # Crear seis personajes, dos de cada tipo
+    characters = []
 
-    # Asignar objetivos a los personajes
-    characters[0].move_to(18, 15)
-    characters[1].move_to(3, 8)
-    characters[2].move_to(10, 14)
+    # Tipo 1
+    character1 = Character(
+        2, 2, grid, astar, build_decision_tree_type1, 1, ORANGE)
+    character2 = Character(
+        3, 3, grid, astar, build_decision_tree_type1, 1, ORANGE)
+    characters.extend([character1, character2])
+
+    # Tipo 2
+    character3 = Character(
+        5, 12, grid, astar, build_decision_tree_type2, 2, RED)
+    character4 = Character(
+        6, 13, grid, astar, build_decision_tree_type2, 2, RED)
+    characters.extend([character3, character4])
+
+    # Tipo 3
+    character5 = Character(
+        15, 3, grid, astar, build_decision_tree_type3, 3, BLUE)
+    character6 = Character(
+        16, 4, grid, astar, build_decision_tree_type3, 3, BLUE)
+    characters.extend([character5, character6])
+
+    # Asignar la lista de personajes a cada personaje
+    for character in characters:
+        character.characters_list = characters
+
+    # Inicializar el EventManager
+    event_manager = EventManager(grid, characters)
 
     running = True
     while running:
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_pressed = pygame.mouse.get_pressed()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-            # Asignar nuevo objetivo al primer personaje al hacer clic
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    grid_x = mouse_pos[0] // TILE_SIZE
-                    grid_y = mouse_pos[1] // TILE_SIZE
-                    if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
-                        if grid[grid_y][grid_x] == 0:
-                            characters[0].move_to(grid_x, grid_y)
+        # Manejar eventos
+        running = event_manager.process_events()
 
         # Manejar el botón para mostrar/ocultar conexiones
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
         button_rect = draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
                                   ("ON" if show_connections else "OFF"), show_connections)
         if button_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
@@ -143,9 +153,6 @@ def main():
         # Dibujar personajes
         for character in characters:
             character.draw(screen)
-
-        draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
-                    ("ON" if show_connections else "OFF"), show_connections)
 
         pygame.display.flip()
         clock.tick(5)
