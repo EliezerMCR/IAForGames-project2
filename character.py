@@ -96,8 +96,15 @@ class Character:
             self.state = 'idle'
 
     def draw(self, screen):
-        # Dibujar el personaje como un círculo en el centro de la tile
+        # Draw the character as a circle
         center_x = self.x * TILE_SIZE + TILE_SIZE // 2
         center_y = self.y * TILE_SIZE + TILE_SIZE // 2
         pygame.draw.circle(screen, self.color,
                            (center_x, center_y), TILE_SIZE // 3)
+
+        # Draw the character's state
+        font = pygame.font.SysFont(None, 16)
+        state_text = font.render(self.state, True, (0, 0, 0))
+        text_rect = state_text.get_rect(
+            center=(center_x, center_y - TILE_SIZE // 2))
+        screen.blit(state_text, text_rect)

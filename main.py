@@ -38,12 +38,41 @@ def get_neighbors(x, y, grid):
     return neighbors
 
 
+def get_random_position(grid, occupied_positions):
+    grid_width = len(grid[0])
+    grid_height = len(grid)
+    while True:
+        x = random.randint(1, grid_width - 2)
+        y = random.randint(1, grid_height - 2)
+        if grid[y][x] == 0 and (x, y) not in occupied_positions:
+            return x, y
+
+
+def generate_random_obstacles(grid, num_obstacles=6, max_obstacle_size=10):
+    grid_width = len(grid[0])
+    grid_height = len(grid)
+    for _ in range(num_obstacles):
+        # Generar tamaño aleatorio para el obstáculo
+        obstacle_width = random.randint(1, max_obstacle_size)
+        obstacle_height = random.randint(1, max_obstacle_size)
+
+        # Generar posición aleatoria para el obstáculo
+        start_x = random.randint(1, grid_width - obstacle_width - 2)
+        start_y = random.randint(1, grid_height - obstacle_height - 2)
+
+        # Marcar las celdas del obstáculo en el grid
+        for x in range(start_x, start_x + obstacle_width):
+            for y in range(start_y, start_y + obstacle_height):
+                grid[y][x] = 1  # Marcamos como obstáculo
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(
         "World Representation with Grid and A* Pathfinding")
     clock = pygame.time.Clock()
+    random.seed()  # Inicializar la semilla aleatoria
 
     # Crear el mapa (grid) como una matriz 2D
     grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
@@ -56,11 +85,8 @@ def main():
         grid[y][0] = 1  # Pared izquierda
         grid[y][GRID_WIDTH - 1] = 1  # Pared derecha
 
-    # Añadir obstáculos internos
-    for y in range(5, 15):
-        grid[y][15] = 1  # Obstáculo vertical
-    for x in range(15, 25):
-        grid[10][x] = 1  # Obstáculo horizontal
+    # Generar obstáculos aleatorios
+    generate_random_obstacles(grid, num_obstacles=6, max_obstacle_size=10)
 
     show_connections = False  # Variable para controlar la visibilidad de las conexiones
 
@@ -69,27 +95,32 @@ def main():
 
     # Crear seis personajes, dos de cada tipo
     characters = []
+    # Lista de posiciones ocupadas por otros personajes
+    occupied_positions = set()
 
     # Tipo 1
-    character1 = Character(
-        2, 2, grid, astar, build_decision_tree_type1, 1, ORANGE)
-    character2 = Character(
-        3, 3, grid, astar, build_decision_tree_type1, 1, ORANGE)
-    characters.extend([character1, character2])
+    for _ in range(2):
+        x, y = get_random_position(grid, occupied_positions)
+        occupied_positions.add((x, y))
+        character = Character(
+            x, y, grid, astar, build_decision_tree_type1, 1, ORANGE)
+        characters.append(character)
 
     # Tipo 2
-    character3 = Character(
-        5, 12, grid, astar, build_decision_tree_type2, 2, RED)
-    character4 = Character(
-        6, 13, grid, astar, build_decision_tree_type2, 2, RED)
-    characters.extend([character3, character4])
+    for _ in range(2):
+        x, y = get_random_position(grid, occupied_positions)
+        occupied_positions.add((x, y))
+        character = Character(
+            x, y, grid, astar, build_decision_tree_type2, 2, RED)
+        characters.append(character)
 
     # Tipo 3
-    character5 = Character(
-        15, 3, grid, astar, build_decision_tree_type3, 3, BLUE)
-    character6 = Character(
-        16, 4, grid, astar, build_decision_tree_type3, 3, BLUE)
-    characters.extend([character5, character6])
+    for _ in range(2):
+        x, y = get_random_position(grid, occupied_positions)
+        occupied_positions.add((x, y))
+        character = Character(
+            x, y, grid, astar, build_decision_tree_type3, 3, BLUE)
+        characters.append(character)
 
     # Asignar la lista de personajes a cada personaje
     for character in characters:
@@ -100,26 +131,25 @@ def main():
 
     running = True
     while running:
-        # Manejar eventos
+        # Process events
         running = event_manager.process_events()
 
-        # Manejar el botón para mostrar/ocultar conexiones
+        # Get mouse position and state
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
-        button_rect = draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
-                                  ("ON" if show_connections else "OFF"), show_connections)
-        if button_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
-            show_connections = not show_connections
-            pygame.time.delay(200)
 
-        # Actualizar personajes
+        # Update characters
         for character in characters:
             character.update()
 
-        # Dibujar el fondo
-        screen.fill((255, 255, 255))
+        # Check if any character is in alarm state
+        alarm_active = any(character.state == 'event' or character.state ==
+                           'fleeing' for character in characters)
 
-        # Dibujar las tiles y la cuadrícula
+        # Draw the background
+        screen.fill((255, 200, 200) if alarm_active else (255, 255, 255))
+
+        # Draw the tiles and grid
         for y in range(GRID_HEIGHT):
             for x in range(GRID_WIDTH):
                 rect = pygame.Rect(x * TILE_SIZE, y *
@@ -130,18 +160,21 @@ def main():
                     pygame.draw.rect(screen, (200, 200, 200), rect)
                 pygame.draw.rect(screen, (0, 0, 0), rect, 1)
 
-                # Dibujar conexiones entre nodos
-                if show_connections and grid[y][x] == 0:
-                    neighbors = get_neighbors(x, y, grid)
-                    for nx, ny in neighbors:
-                        start_pos = (x * TILE_SIZE + TILE_SIZE //
-                                     2, y * TILE_SIZE + TILE_SIZE // 2)
-                        end_pos = (nx * TILE_SIZE + TILE_SIZE // 2,
-                                   ny * TILE_SIZE + TILE_SIZE // 2)
-                        pygame.draw.line(screen, (0, 0, 255),
-                                         start_pos, end_pos, 1)
+        # Draw connections between nodes
+        if show_connections:
+            for y in range(GRID_HEIGHT):
+                for x in range(GRID_WIDTH):
+                    if grid[y][x] == 0:
+                        neighbors = get_neighbors(x, y, grid)
+                        for nx, ny in neighbors:
+                            start_pos = (x * TILE_SIZE + TILE_SIZE //
+                                         2, y * TILE_SIZE + TILE_SIZE // 2)
+                            end_pos = (nx * TILE_SIZE + TILE_SIZE //
+                                       2, ny * TILE_SIZE + TILE_SIZE // 2)
+                            pygame.draw.line(
+                                screen, (0, 0, 255), start_pos, end_pos, 1)
 
-        # Dibujar el camino de los personajes
+        # Draw the path of the characters
         for character in characters:
             if character.path:
                 for pos in character.path[character.index:]:
@@ -150,9 +183,23 @@ def main():
                                        TILE_SIZE, TILE_SIZE, TILE_SIZE)
                     pygame.draw.rect(screen, (0, 255, 0), rect)
 
-        # Dibujar personajes
+        # Draw characters
         for character in characters:
             character.draw(screen)
+
+        # Draw the alarm message if active
+        if alarm_active:
+            font = pygame.font.SysFont(None, 48)
+            alarm_text = font.render("ALARM ACTIVE", True, (255, 0, 0))
+            text_rect = alarm_text.get_rect(center=(WIDTH // 2, 50))
+            screen.blit(alarm_text, text_rect)
+
+        # Draw the button after everything else
+        button_rect = draw_button(screen, 10, 10, 200, 40, "Conexiones: " +
+                                  ("ON" if show_connections else "OFF"), show_connections)
+        if button_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            show_connections = not show_connections
+            pygame.time.delay(200)
 
         pygame.display.flip()
         clock.tick(5)
